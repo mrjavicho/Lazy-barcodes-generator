@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .header {
+            text-align: center;
+            padding: 32px;
+        }
+
+
+
+        .column {
+            float: left;
+            width: 20%;
+            padding: 5px;
+            margin: 16px;
+        }
+
+        li {
+            list-style-type: square;
+            margin-bottom: 8px;
+        }
+
+        /* Clearfix (clear floats) */
+        .row::after {
+            content: "";
+            clear: both;
+            display: table;
+        }
+
+        /* Responsive layout - makes the columns stack on top of each other instead of next to each other */
+        @media screen and (max-width: 500px) {
+            .column {
+                width: 100%;
+            }
+        }
+    </style>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+        integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+</head>
+
+
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="header" id="myHeader">
+            <h1>Lazy barcodes generator</h1>
+            <p>A simple display of barcodes using <a
+                    href="https://github.com/metafloor/bwip-js/wiki/Online-Barcode-API">bwipjs-api Barcod API</a></p>
+        </div>
+        <ul>
+            <li>
+                For now, the only supported barcode type is code128.                
+            </li>
+            <li>Changing it is pretty simple, just edit this file and use one of the <a
+                href="https://github.com/metafloor/bwip-js/wiki/BWIPP-Barcode-Types">supported barcodes</a> instead.
+            </li>
+            <li>
+                Yo can use , ; and break lines to separate each barcode value
+            </li>
+            <li>
+                Theres no limit for the number of codes, but each row shows 4 barcodes at most
+            </li>
+
+        </ul>
+        <!-- Entry -->
+        <div class="form-group" style="margin-left: 20px; margin-right: 20px;">
+            <textarea id="codes-entry" class="form-control" rows="6">AAA1234;BBB1234</textarea>
+            <br>
+            <button type="button" class="btn btn-primary btn-lg btn-block" onclick="generateBarcodes()">Generate</button>
+        </div>
+        <br>
+        <!-- Barcodes container -->
+        <div id="barcodes-container"></div>
+    </div>
+
+
+    <script>
+        String.format = function () {
+            var s = arguments[0];
+            for (var i = 0; i < arguments.length - 1; i++) {
+                var reg = new RegExp("\\{" + i + "\\}", "gm");
+                s = s.replace(reg, arguments[i + 1]);
+            }
+            return s;
+        }
+        function generateBarcodes() {
+            try {
+                let str = document.getElementById("codes-entry").value;
+                var separator;
+                if (str.includes('\n')) {
+                    separator = '\n'
+                }
+                else if (str.includes(' ')) {
+                    separator = ' '
+                }
+                else if (str.includes(';')) {
+                    separator = ';'
+                }
+                else if (str.includes(',')) {
+                    separator = ','
+                }
+                let entries = str.split(separator)
+                const entriesCount = entries.length
+                const columnsPerRow = 4
+                var rows = 1
+                if (entriesCount > columnsPerRow) {
+                    let mod = entriesCount % columnsPerRow
+                    if (mod > 0) {
+                        rows = entriesCount / columnsPerRow
+                    }
+                    else {
+                        rows = (entriesCount / columnsPerRow) + 1
+                    }
+                }
+
+                var html = [];
+
+                for (i = 0; i < rows; i++) {
+                    html.push("<div class=\"row\">");
+                    for (j = 0; j < columnsPerRow; j++) {
+                        const index = (i * columnsPerRow) + j;
+                        if (index >= entries.length) {
+                            break;
+                        }
+                        const barcodeValue = entries[index].trim()
+
+                        const imageFormat = "<img src=\"{0}\"style=\"width:100%\">";
+                        const barcodeUrlFormat = "http://bwipjs-api.metafloor.com/?bcid=code128&text={0}&includetext";
+
+                        const barcodeUrl = String.format(barcodeUrlFormat, barcodeValue);
+                        const imageValue = String.format(imageFormat, barcodeUrl);
+
+                        html.push("<div class=\"column\">");
+                        html.push(imageValue);
+                        html.push("</div>");
+                    }
+                    html.push("</div>");
+                }
+
+                document.getElementById("barcodes-container").innerHTML = html.join("");
+            }
+            catch (error) {
+                document.getElementById("barcodes-container").innerText = error;
+            }
+        }
+    </script>
+
+</body>
+<footer class="text-center text-lg-start bg-light text-muted">
+    <body>Made with lazy love by Javier Huamanchumo</body>
+</footer>
+
+</html>
