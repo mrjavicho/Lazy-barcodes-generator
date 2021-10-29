@@ -9,17 +9,4 @@ function exportPdf() {
     printPreview.print(); 
 
     return;
-
-    var element = document.getElementById('barcodesContainer');
-//        filename: `barcodes_${Date.now}.pdf`,
-    var opt = {
-        html2canvas: {
-            dpi: 300,
-            letterRendering: true,
-            useCORS: true
-        }
-    };
-
-    html2pdf().set(opt).from(element).save();
-    return
 }

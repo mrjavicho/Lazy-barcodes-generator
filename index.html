@@ -84,13 +84,7 @@
         $(document).ready(function () {
 
             $("#barcodesContainer").on("DOMSubtreeModified", function () {
-                console.log('changed');
-                console.log('html');
-                console.log($(this).html());
-                console.log('text');
-                console.log($(this).text());
-                var containerIsEmpty = $(this).html() == '';
-                console.log(containerIsEmpty);
+                var containerIsEmpty = $(this).html() == '';                
                 $("#exportBtn").prop("disabled", containerIsEmpty)
             });
         });
