@@ -1,36 +1,36 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 
 <head>
     <title>LBG - Welcome</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Latest compiled and minified CSS -->
-    <link id="csslink" rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
-        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-
-    <link rel="stylesheet" href="main.css">
-
-
-    <!-- Optional theme -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
-        integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
-
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
     <!-- Latest compiled and minified JavaScript -->
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
         integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
         crossorigin="anonymous"></script>
-
+    <link rel="stylesheet" href="main.css">
     <script src="barcodes.js"></script>
     <script src="export.js"></script>
+
 
 
 </head>
 
 
 <body>
-    <div class="container-fluid">
+    <div class="container-fluid" style="max-width: 1020px;">
         <!-- Header -->
         <div class="header" id="myHeader">
             <h1>Lazy barcodes generator</h1>
@@ -38,53 +38,77 @@
                     href="https://github.com/metafloor/bwip-js/wiki/Online-Barcode-API">bwipjs-Online Barcode API</a>
             </p>
         </div>
-        <ul>
-            <li>To add more symbologies, just edit this file and add more elements from the <a
-                    href="https://github.com/metafloor/bwip-js/wiki/BWIPP-Barcode-Types">supported barcodes</a> list.
-            </li>
-            <li>
-                Yo can use , ; and break lines to separate each barcode value
-            </li>
-            <li>
-                There's no limit for the number of codes, but each row shows 4 barcodes at most
-            </li>
 
-        </ul>
         <!-- Entry -->
 
-        <form id="dataForm" style="margin-left: 20px; margin-right: 20px;">
-            <div class="form-group">
-                <label for="symbologySelect">Symbology</label>
-                <select class="form-control" id="symbologySelector">
-                    <option value="code128">Code 128</option>
-                    <option value="datamatrix">Data Matrix</option>
-                    <option value="gs1datamatrix">GS1 Data Matrix</option>
-                    <option value="pdf417">PDF417</option>
-                    <option value="qrcode">QR Code</option>
-                </select>
+
+        <div class="row border bg-light">
+            <div class="col-xl-3 d-none d-sm-block p-4" >
+                <ul>
+                    <li>To add more symbologies, just edit this file and add more elements from the <a
+                            href="https://github.com/metafloor/bwip-js/wiki/BWIPP-Barcode-Types">supported barcodes</a>
+                        list.
+                    </li>
+                    <li>
+                        Yo can use , ; and break lines to separate each barcode value
+                    </li>
+                    <li>
+                        There's no limit for the number of codes, but each row shows 4 barcodes at most
+                    </li>
+
+                </ul>
             </div>
-            <div class="form-group">
-                <label for="exampleFormControlSelect1">Barcodes</label>
-                <textarea id="barcodesEntry" class="form-control" rows="6">AAA1234;BBB1234</textarea>
+            <form id="dataForm" class="col-xl-6 p-4 order-3">
+                <div class="form-group row">
+                    <label for="exampleFormControlSelect1" class="form-label">Barcodes</label>
+                    <textarea id="barcodesEntry" class="form-control" rows="6">AAA1234;BBB1234</textarea>
+                </div>
+                <br>
+                <div class="row">
+                    <button type="button" class="btn btn-primary btn-lg btn-block"
+                        onclick="generateBarcodes()">Generate</button>
+                </div>
+
+                <br>
+                <div class="row">
+                    <button id="exportBtn" disabled="true" type="button" class="btn btn-secondary btn-lg btn-block"
+                        onclick="exportPdf()">Export</button>
+                </div>
+            </form>
+            <div class="col-xl-3 p-4 order-2 order-xl-last">
+                <form id="dataForm">
+                    <div class="form-group row">
+                        <label for="symbologySelect" class="form-label">Symbology</label>
+                        <select class="form-control" id="symbologySelector">
+                            <option value="code128">Code 128</option>
+                            <option value="datamatrix">Data Matrix</option>
+                            <option value="gs1datamatrix">GS1 Data Matrix</option>
+                            <option value="pdf417">PDF417</option>
+                            <option value="qrcode">QR Code</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" checked="true" id="addTextCheck">
+                        <label class="form-check-label" for="addTextCheck">
+                            Show text
+                        </label>
+                    </div>
+                </form>
             </div>
-            <br>
-            <button type="button" class="btn btn-primary btn-lg btn-block"
-                onclick="generateBarcodes()">Generate</button>
-            <br>
-            <button id="exportBtn" disabled="true" type="button" class="btn btn-secondary btn-lg btn-block"
-                onclick="exportPdf()">Export</button>
-        </form>
+        </div>
+
+
     </div>
     <br>
     <!-- Barcodes container -->
-    <div id="barcodesContainer"></div>
+    <div id="barcodesContainer" class="p-3 bg-white rounded"></div>
     <!-- Scripts-->
     <script>
 
         $(document).ready(function () {
 
             $("#barcodesContainer").on("DOMSubtreeModified", function () {
-                var containerIsEmpty = $(this).html() == '';                
+                var containerIsEmpty = $(this).html() == '';
                 $("#exportBtn").prop("disabled", containerIsEmpty)
             });
         });
@@ -92,9 +116,9 @@
 
     </script>
 </body>
-<footer id="myFooter" class="text-center text-lg-start bg-light text-muted">
+<footer id="myFooter" class="text-center">
 
-    <body>Made with lazy &#10084;&#65039; by Javier Huamanchumo Arauco</body>
+    <body>Made with lazy &#10084;&#65039;&nbsp; by Javier Huamanchumo Arauco</body>
 </footer>
 
 </html>

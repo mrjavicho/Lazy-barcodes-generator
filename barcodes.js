@@ -54,13 +54,24 @@ function generateBarcodes() {
 
                 const imageFormat = "<img src=\"{0}\"style=\"width:100%\">";
                 const symbology = document.getElementById("symbologySelector").value
-                const barcodeUrlFormat = "http://bwipjs-api.metafloor.com/?bcid={0}&text={1}&includetext";
+                const barcodeUrlFormat = "http://bwipjs-api.metafloor.com/?bcid={0}&text={1}";
 
                 const barcodeUrl = String.format(barcodeUrlFormat, symbology, barcodeValue);
                 const imageValue = String.format(imageFormat, barcodeUrl);
 
+                const labelFormat = "<label class=\"text-center font-monospace fs-6\" style=\"width:100%\" >{0}</label>";
+                const labelValue = String.format(labelFormat, barcodeValue);
+
+                const addText = document.getElementById("addTextCheck").checked
+
+
                 html.push("<div class=\"column\">");
                 html.push(imageValue);
+
+                if(addText){
+                    html.push(labelValue);
+                }
+                
                 html.push("</div>");
             }
             html.push("</div>");
