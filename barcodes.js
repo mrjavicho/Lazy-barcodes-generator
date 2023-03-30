@@ -7,6 +7,19 @@ String.format = function () {
     return s;
 }
 
+function createBarcodeGrid(entries) {
+    let html = [];
+    html.push('<div class="grid-container">');
+  
+    for (let i = 0; i < entries.length; i++) {
+      const id = `barcode_image_${i}`;
+      html.push(`<div class="barcode-container"><img id="${id}" class="barcode-image"></div>`);
+    }
+  
+    html.push('</div>');
+    return html.join('');
+  }
+
 function generateBarcodes() {
     try {
         let str = document.getElementById("barcodesEntry").value;
@@ -43,32 +56,10 @@ function generateBarcodes() {
                 rows = (entriesCount / columnsPerRow) + 1
             }
         }
+        
+        let gridHtml = createBarcodeGrid(entries);
+        document.getElementById("barcodesContainer").innerHTML = gridHtml;
 
-
-        var html = [];
-        var ids = [];
-
-        for (i = 0; i < rows; i++) {
-            html.push("<div class=\"row\">");
-            for (j = 0; j < columnsPerRow; j++) {
-                const index = (i * columnsPerRow) + j;
-                if (index >= entries.length) {
-                    break;
-                }
-                const newId = String.format("barcode_image_{0}{1}", i, j);
-                ids.push(newId);
-                const imageFormat = "<img id=\"{0}\">";
-
-                const imageValue = String.format(imageFormat, newId);
-
-                html.push("<div class=\"column bg-light\">");           
-                html.push(imageValue);
-                html.push("</div>");
-            }
-            html.push("</div>");
-        }
-
-        document.getElementById("barcodesContainer").innerHTML = html.join("");
         
         const symbology = document.getElementById("symbologySelector").value
         localStorage.setItem('lastSymbology', symbology);
@@ -77,7 +68,7 @@ function generateBarcodes() {
 
         for (let i = 0; i < entries.length; i++) {
             const barcodeValue = entries[i].trim();
-            const id = ids[i];
+            const id = `barcode_image_${i}`;//this is the value used when creating the grid
 
             var options = {
                 bcid: symbology,       // Barcode type
