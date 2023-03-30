@@ -10,10 +10,13 @@ String.format = function () {
 function generateBarcodes() {
     try {
         let str = document.getElementById("barcodesEntry").value;
-        if(str == ''){
+        if (str == '') {
             document.getElementById("barcodesContainer").innerText = '';
             return
         }
+
+        localStorage.setItem('lastRequest', str);
+
         var separator;
         if (str.includes('\n')) {
             separator = '\n'
@@ -41,7 +44,9 @@ function generateBarcodes() {
             }
         }
 
+
         var html = [];
+        var ids = [];
 
         for (i = 0; i < rows; i++) {
             html.push("<div class=\"row\">");
@@ -50,34 +55,49 @@ function generateBarcodes() {
                 if (index >= entries.length) {
                     break;
                 }
-                const barcodeValue = entries[index].trim()
+                const newId = String.format("barcode_image_{0}{1}", i, j);
+                ids.push(newId);
+                const imageFormat = "<img id=\"{0}\">";
 
-                const imageFormat = "<img src=\"{0}\"style=\"width:100%\">";
-                const symbology = document.getElementById("symbologySelector").value
-                const barcodeUrlFormat = "http://bwipjs-api.metafloor.com/?bcid={0}&text={1}";
+                const imageValue = String.format(imageFormat, newId);
 
-                const barcodeUrl = String.format(barcodeUrlFormat, symbology, barcodeValue);
-                const imageValue = String.format(imageFormat, barcodeUrl);
-
-                const labelFormat = "<label class=\"text-center font-monospace fs-6\" style=\"width:100%\" >{0}</label>";
-                const labelValue = String.format(labelFormat, barcodeValue);
-
-                const addText = document.getElementById("addTextCheck").checked
-
-
-                html.push("<div class=\"column\">");
+                html.push("<div class=\"column bg-light\">");           
                 html.push(imageValue);
-
-                if(addText){
-                    html.push(labelValue);
-                }
-                
                 html.push("</div>");
             }
             html.push("</div>");
         }
 
         document.getElementById("barcodesContainer").innerHTML = html.join("");
+        
+        const symbology = document.getElementById("symbologySelector").value
+        localStorage.setItem('lastSymbology', symbology);
+        const addText = document.getElementById("addTextCheck").checked
+        let canvas = document.createElement('canvas');
+
+        for (let i = 0; i < entries.length; i++) {
+            const barcodeValue = entries[i].trim();
+            const id = ids[i];
+
+            var options = {
+                bcid: symbology,       // Barcode type
+                text: barcodeValue,    // Text to encode
+                scale: 3,               // 3x scaling factor
+                height: 10,              // Bar height, in millimeters
+                includetext: addText,            // Show human-readable text
+                textxalign: 'center',        // Always good to set this
+            };
+            try {
+
+                bwipjs.toCanvas(canvas, options);
+                var img = document.getElementById(id);
+                if (img != null) {
+                    img.src = canvas.toDataURL('image/png');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
     }
     catch (error) {
         document.getElementById("barcodesContainer").innerText = error;
