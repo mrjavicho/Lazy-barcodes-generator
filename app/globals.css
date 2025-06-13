@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base theme colors */
+    --background: 210 33% 99%;
+    --foreground: 210 25% 25%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 25% 25%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 25% 25%;
+
+    /* IDE-inspired syntax colors - Light mode */
+    --primary: 210 100% 50%; /* VSCode blue */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 60% 40%; /* String green */
+    --secondary-foreground: 0 0% 100%;
+
+    --keyword: 270 70% 60%; /* Keyword purple */
+    --string: 150 60% 40%; /* String green */
+    --number: 35 90% 55%; /* Number orange */
+    --comment: 210 15% 50%; /* Comment gray */
+    --error: 0 70% 50%; /* Error red */
+    --warning: 35 90% 55%; /* Warning orange */
+
+    --muted: 210 20% 92%;
+    --muted-foreground: 210 15% 40%;
+
+    --accent: 210 20% 92%;
+    --accent-foreground: 210 25% 25%;
+
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 210 20% 85%;
+    --input: 210 20% 85%;
+    --ring: 210 100% 50%;
+    --radius: 0.5rem;
+
+    /* Custom primary color palette - IDE Blue theme */
+    --primary-50: 210 100% 97%;
+    --primary-100: 210 100% 92%;
+    --primary-200: 210 100% 85%;
+    --primary-300: 210 100% 75%;
+    --primary-400: 210 100% 65%;
+    --primary-500: 210 100% 50%;
+    --primary-600: 210 100% 45%;
+    --primary-700: 210 100% 40%;
+    --primary-800: 210 100% 35%;
+    --primary-900: 210 100% 30%;
+    --primary-950: 210 100% 20%;
+  }
+
+  .dark {
+    /* Base theme colors - Dark mode */
+    --background: 210 25% 12%;
+    --foreground: 210 15% 90%;
+
+    --card: 210 25% 15%;
+    --card-foreground: 210 15% 90%;
+
+    --popover: 210 25% 15%;
+    --popover-foreground: 210 15% 90%;
+
+    /* IDE-inspired syntax colors - Dark mode */
+    --primary: 210 100% 60%; /* VSCode blue - brighter for dark mode */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 150 60% 50%; /* String green - brighter for dark mode */
+    --secondary-foreground: 0 0% 100%;
+
+    --keyword: 270 70% 75%; /* Keyword purple - brighter */
+    --string: 150 60% 50%; /* String green - brighter */
+    --number: 35 90% 65%; /* Number orange - brighter */
+    --comment: 210 15% 60%; /* Comment gray - brighter */
+    --error: 0 70% 60%; /* Error red - brighter */
+    --warning: 35 90% 65%; /* Warning orange - brighter */
+
+    --muted: 210 25% 20%;
+    --muted-foreground: 210 15% 65%;
+
+    --accent: 210 25% 20%;
+    --accent-foreground: 210 15% 90%;
+
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 210 15% 90%;
+
+    --border: 210 25% 25%;
+    --input: 210 25% 25%;
+    --ring: 210 100% 60%;
+
+    /* Custom primary color palette - Dark IDE Blue theme */
+    --primary-50: 210 100% 20%;
+    --primary-100: 210 100% 25%;
+    --primary-200: 210 100% 30%;
+    --primary-300: 210 100% 35%;
+    --primary-400: 210 100% 45%;
+    --primary-500: 210 100% 60%;
+    --primary-600: 210 100% 70%;
+    --primary-700: 210 100% 80%;
+    --primary-800: 210 100% 90%;
+    --primary-900: 210 100% 95%;
+    --primary-950: 210 100% 98%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .primary-50 {
+    @apply bg-[hsl(var(--primary-50))];
+  }
+  .primary-100 {
+    @apply bg-[hsl(var(--primary-100))];
+  }
+  .primary-200 {
+    @apply bg-[hsl(var(--primary-200))];
+  }
+  .primary-300 {
+    @apply bg-[hsl(var(--primary-300))];
+  }
+  .primary-400 {
+    @apply bg-[hsl(var(--primary-400))];
+  }
+  .primary-500 {
+    @apply bg-[hsl(var(--primary-500))];
+  }
+  .primary-600 {
+    @apply bg-[hsl(var(--primary-600))];
+  }
+  .primary-700 {
+    @apply bg-[hsl(var(--primary-700))];
+  }
+  .primary-800 {
+    @apply bg-[hsl(var(--primary-800))];
+  }
+  .primary-900 {
+    @apply bg-[hsl(var(--primary-900))];
+  }
+  .primary-950 {
+    @apply bg-[hsl(var(--primary-950))];
+  }
+
+  /* IDE-inspired syntax highlighting utility classes */
+  .text-keyword {
+    @apply text-[hsl(var(--keyword))];
+  }
+  .text-string {
+    @apply text-[hsl(var(--string))];
+  }
+  .text-number {
+    @apply text-[hsl(var(--number))];
+  }
+  .text-comment {
+    @apply text-[hsl(var(--comment))];
+  }
+  .text-error {
+    @apply text-[hsl(var(--error))];
+  }
+  .text-warning {
+    @apply text-[hsl(var(--warning))];
+  }
+}
