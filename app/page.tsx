@@ -25,7 +25,6 @@ interface BarcodeOptions {
   bcid: string
   text: string
   scale: number
-  height: number
   includetext: boolean
   textxalign: string
 }
@@ -120,7 +119,6 @@ export default function BarcodeGenerator() {
           bcid: symbology,
           text: entry,
           scale: 3,
-          height: 10,
           includetext: showText,
           textxalign: "center",
         }
