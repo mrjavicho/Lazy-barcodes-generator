@@ -25,48 +25,78 @@ interface BarcodeOptions {
   bcid: string
   text: string
   scale: number
-  includetext: boolean
   textxalign: string
 }
 
 declare global {
   interface Window {
     bwipjs: {
-      toCanvas: (canvas: HTMLCanvasElement, options: BarcodeOptions) => void
-    }
+      toCanvas: (canvas: HTMLCanvasElement, options: {}) => void
+    },
+    symdesc?: Record<string, { sym: string; desc: string; text: string; opts: string }>;
   }
 }
 
+let selectedOptions : Record<string, string> = {};
+
 export default function BarcodeGenerator() {
+  // Load bwip-js library
+  const bwipLibscript = document.createElement("script")
+  bwipLibscript.src = "https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"
+  bwipLibscript.async = true
+  document.head.appendChild(bwipLibscript)
+  // Load symdesc
+  const descScript = document.createElement("script")
+  descScript.src = "https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/lib/symdesc.js"
+  descScript.async = true
+  document.head.appendChild(descScript)
+
   const [barcodeText, setBarcodeText] = useState("AAA1234;BBB1234")
-  const [symbology, setSymbology] = useState("code128")
-  const [showText, setShowText] = useState(true)
+  const [symbology, setSymbology] = useState("")
+  const [initialSymbology, setInitialSymbology] = useState("");
   const [darkMode, setDarkMode] = useState(false)
   const [barcodes, setBarcodes] = useState<string[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [options, setOptions] = useState<Record<string, string>>({});
+
+  const [error, setError] = useState<string | null>(null); // State to store error messages
 
   useEffect(() => {
+
     // Load saved preferences
     const savedDarkMode = localStorage.getItem("darkModeEnabled") === "true"
     const savedSymbology = localStorage.getItem("lastSymbology")
     const savedRequest = localStorage.getItem("lastRequest")
 
     if (savedDarkMode) setDarkMode(true)
-    if (savedSymbology) setSymbology(savedSymbology)
+    if (savedSymbology){
+      console.log("savedSymbology: ", savedSymbology);
+      setInitialSymbology(savedSymbology)
+      setSymbology(savedSymbology)
+    }
+    else{
+      setInitialSymbology("code128")
+      setSymbology("code128")
+    }
     if (savedRequest) setBarcodeText(savedRequest)
 
-    // Load bwip-js library
-    const script = document.createElement("script")
-    script.src = "https://cdn.jsdelivr.net/npm/bwip-js@4.5.1/dist/bwip-js-min.js"
-    script.async = true
-    document.head.appendChild(script)
 
     return () => {
-      if (document.head.contains(script)) {
-        document.head.removeChild(script)
+      if (document.head.contains(bwipLibscript)) {
+        document.head.removeChild(bwipLibscript)
+      }
+      if (document.head.contains(descScript)) {
+        document.head.removeChild(descScript)
       }
     }
   }, [])
+
+  useEffect(() => {
+    console.log(`effect triggered by: ${symbology}`);
+    if (!symbology) return;
+    loadOptions(symbology);
+    if (symbology === initialSymbology) return;
+  }, [symbology])
 
   useEffect(() => {
     localStorage.setItem("darkModeEnabled", darkMode.toString())
@@ -77,15 +107,85 @@ export default function BarcodeGenerator() {
     }
   }, [darkMode])
 
+  function loadOptionsRecords(symbOptions: string) : Record<string, string>{
+    let records : Record<string, string> = {};
+    if (!symbOptions || symbOptions.length === 0) {
+      return records;
+    }
+    const defOptions = symbOptions.split(" ");
+    for (const defOption of defOptions) {
+      if(defOption.includes("=")){
+        const [key, value] = defOption.split("=");
+        records[key] = value;
+      }
+      else{
+        records[defOption] = "false";
+      }
+    }
+    return records;
+  }
+
+  const loadOptions = (symbology: string) => {
+    selectedOptions = {}
+    if (window.symdesc) {
+      const symbologyInfo = window.symdesc[symbology];
+      if (symbologyInfo) {
+        console.log(`loading options for symbology: ${symbology}`);
+        let storedOptions = localStorage.getItem(storedOptionsKey(symbology));
+        console.log(`loading ${storedOptionsKey(symbology)}`, storedOptions);
+        if (storedOptions && storedOptions != "{}") {
+          const storedOptionsObj : Record<string,string> = JSON.parse(storedOptions)
+          console.log("storedOptionsObj: ", storedOptionsObj);
+          setOptions(storedOptionsObj)
+          selectedOptions = storedOptionsObj
+        }
+        else{
+          const defaultOptions = loadOptionsRecords(symbologyInfo.opts);
+          console.log("defaultOptions: ", defaultOptions);
+          setOptions(defaultOptions);
+          selectedOptions = defaultOptions;
+        }
+
+      } else {
+        console.log(`no options available for symbology: ${symbology}`);
+        setOptions({});
+      }
+    } else {
+      console.log(`loading options failed, no symdesc available`);
+      setOptions({});
+    }
+  };
+
+  const handleInputChange = (key: string, value: string) => {
+    selectedOptions[key] = value;
+  };
+
+  const handleSwitchChange = (key: string, value: boolean) => {
+    selectedOptions[key] = value ? "true" : "false";
+  };
+  
+  const storedOptionsKey = (symbology: string) => {
+    return `stored_${symbology}_opts`;
+  }
+
+
+
+
   const generateBarcodes = async () => {
     if (!barcodeText.trim()) {
-      setBarcodes([])
+      setBarcodes([]);
+      setError(null);
       return
     }
 
-    setIsGenerating(true)
-    localStorage.setItem("lastRequest", barcodeText)
-    localStorage.setItem("lastSymbology", symbology)
+    setBarcodes([]);
+    setIsGenerating(true);
+    setError(null);
+
+    localStorage.setItem("lastRequest", barcodeText);
+    localStorage.setItem("lastSymbology", symbology);
+    localStorage.setItem(storedOptionsKey(symbology), JSON.stringify(selectedOptions));
+    console.log(`storing ${storedOptionsKey(symbology)}`, selectedOptions);
 
     try {
       // Determine separator
@@ -115,22 +215,28 @@ export default function BarcodeGenerator() {
       const canvas = document.createElement("canvas")
 
       for (const entry of entries) {
-        const options: BarcodeOptions = {
-          bcid: symbology,
-          text: entry,
-          scale: 3,
-          includetext: showText,
-          textxalign: "center",
+        let options = {};
+
+        for (const [key, value] of Object.entries(selectedOptions)) {
+          options[key] = value;
         }
 
+        options.text = entry;
+        options.bcid = symbology;
+        options.scale = 3;
+
+        console.log("generating barcodes using: ", options);
         try {
           window.bwipjs.toCanvas(canvas, options)
           generatedBarcodes.push(canvas.toDataURL("image/png"))
         } catch (error) {
-          console.error("Error generating barcode for:", entry, error)
+          console.error("Error generating barcode for:", entry, error);
+          setError(`Failed to generate barcode for: ${entry}
+          ${error}
+          `);
+          return;
         }
       }
-
       setBarcodes(generatedBarcodes)
     } catch (error) {
       console.error("Error generating barcodes:", error)
@@ -306,7 +412,7 @@ export default function BarcodeGenerator() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div>
-                  <Label htmlFor="symbology" className="text-sm font-medium mb-2 block text-foreground">
+                  <Label htmlFor="symbology" className="text-sm font-bold mb-2 block text-foreground">
                     Symbology
                   </Label>
                   <Select value={symbology} onValueChange={setSymbology}>
@@ -315,22 +421,78 @@ export default function BarcodeGenerator() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="code128">Code 128</SelectItem>
-                      <SelectItem value="datamatrix">Data Matrix</SelectItem>
-                      <SelectItem value="gs1datamatrix">GS1 Data Matrix</SelectItem>
+                      <SelectItem value="interleaved2of5">Interleaved 2 of 5</SelectItem>
                       <SelectItem value="pdf417">PDF417</SelectItem>
                       <SelectItem value="qrcode">QR Code</SelectItem>
+                      <SelectItem value="dotcode">Dot code</SelectItem>
+                      <SelectItem value="datamatrix">Data Matrix</SelectItem>
+                      <SelectItem value="gs1datamatrix">GS1 Data Matrix</SelectItem>
+                      <SelectItem value="ean5">EAN-5</SelectItem>
+                      <SelectItem value="ean8">EAN-13</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Switch id="show-text" checked={showText} onCheckedChange={setShowText} />
-                  <Label htmlFor="show-text" className="text-sm font-medium text-foreground">
-                    Show text below barcode
-                  </Label>
+
+                <div>
+                  
+                  
+                  
+                  {Object.entries(options).length > 0 ? (
+                      <>
+                          <Label htmlFor="symbology" className="text-sm font-bold mb-2 block text-foreground">
+                            Options
+                          </Label>
+                      <ul className="text-gray-700 list-disc list-inside space-y-2">
+                        {Object.entries(options).map(([key,value], index) => {
+                          const hasBoolValue =  value === "true" || value === "false";
+                          if (hasBoolValue) {
+                            //Switch input
+                            return (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <Switch
+                                      id={`${symbology}_option_${key}`}
+                                      defaultChecked={value === "true"}
+                                      onCheckedChange={(checked) => handleSwitchChange(key, checked)}/>
+                                  <Label htmlFor={`${symbology}_option_${key}`} className="text-sm font-medium text-foreground">
+                                    {key}
+                                  </Label>
+                                </div>
+                            );
+                          } else {
+                            return (
+                                //Text input
+                                <div key={`${symbology}_option_${key}`} className="flex items-center">
+                                  <Label htmlFor={`${symbology}_option_${key}`} className="text-sm font-medium text-foreground mr-4">
+                                    {key}:
+                                  </Label>
+                                  <input
+                                      id={`${symbology}_option_${key}`}
+                                      type="text"
+                                      defaultValue={value}
+                                      onChange={(e) => handleInputChange(key, e.target.value)}
+                                      className="w-16 border border-gray-300 rounded-lg p-1 text-sm"
+                                  />
+                                </div>
+                            );
+                          }
+                        })}
+                      </ul>
+                      </>
+                  ) : (
+                      <p className="text-gray-500 italic">No hay opciones disponibles</p>
+                  )}
+
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/*Errors*/}
+          {error && (
+              <div className="error-message bg-red-100 text-red-700 p-4 my-4 rounded">
+                <strong>Error:</strong> {error}
+              </div>
+          )}
 
           {/* Barcodes Display */}
           {barcodes.length > 0 && (
