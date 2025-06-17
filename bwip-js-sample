@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<!-- saved from url=(0044)https://bwip-js.metafloor.com/demo/demo.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><title>bwip-js - JavaScript Barcode Generator</title>
+
+<meta name="keywords" content="bar code, barcode generator, online barcode generator, free barcode generator, javascript, javascript library, nodejs, QR Code, EAN, EAN 13, Code 128, UPC, ISBN, ITF 14, Code 39, GS1, GS1 128, PDF417, HIBC, DataMatrix, Data Matrix, DataBar, OCR, OCR B, OCR font, Aztec Code, PostNet, USPS, Pharmacode">
+<meta name="description" content="JavaScript barcode generator and library.  Create any barcode in your browser.">
+<link rel="stylesheet" type="text/css" href="./bwip-js - sample_files/demo.css">
+<script type="text/javascript" src="./bwip-js - sample_files/bwip-js.js"></script>
+<script type="text/javascript" src="./bwip-js - sample_files/symdesc.js"></script>
+<script type="text/javascript" src="./bwip-js - sample_files/canvas-toblob.js"></script>
+<script type="text/javascript" src="./bwip-js - sample_files/filesaver.js"></script>
+<script type="text/javascript" src="./bwip-js - sample_files/inconsolata.js"></script>
+<script type="text/javascript">
+window.addEventListener('load', function() {
+    var lastSymbol, lastBarText, lastAltText, lastOptions, lastRotate, lastScaleX, lastScaleY,
+        lastRenderAs = 'render-canvas';
+    try {
+        lastSymbol  = localStorage.getItem('bwipjsLastSymbol');
+        lastBarText = localStorage.getItem('bwipjsLastBarText');
+        lastAltText = localStorage.getItem('bwipjsLastAltText');
+        lastOptions = localStorage.getItem('bwipjsLastOptions');
+        lastRotate  = localStorage.getItem('bwipjsLastRotate');
+        lastScaleX  = +localStorage.getItem('bwipjsLastScaleX');
+        lastScaleY  = +localStorage.getItem('bwipjsLastScaleY');
+        lastRenderAs = localStorage.getItem('bwipjsLastRenderAs');
+    } catch (e) {
+    }
+
+    // Set up the select list of barcode types
+    var sel = document.getElementById('symbol');
+    var opts = [];
+    for (var id in symdesc) {
+        opts.push(symdesc[id]);
+    }
+    opts.sort(function (a,b) { return a.desc < b.desc ? -1 : 1 });
+    for (var i = 0, l = opts.length; i < l; i++) {
+        var elt = document.createElement('option');
+        elt.textContent = opts[i].desc;
+        elt.value = opts[i].sym;
+        sel.appendChild(elt);
+    }
+
+    sel.addEventListener('change', function(ev) {
+            var desc = symdesc[sel.value];
+            if (desc) {
+                document.getElementById('symtext').value = desc.text;
+                document.getElementById('symopts').value = desc.opts;
+            } else {
+                document.getElementById('symtext').value = '';
+                document.getElementById('symopts').value = '';
+            }
+            document.getElementById('symaltx').value = '';
+            document.getElementById('saveas').style.visibility = 'hidden';
+            document.getElementById('stats').textContent = '';
+            document.getElementById('canvas').style.display = 'none';
+            document.getElementById('svgdiv').style.display = 'none';
+            document.getElementById('output').textContent = '';
+        });
+
+    if (lastSymbol) {
+        sel.value = lastSymbol;
+    } else {
+        sel.selectedIndex = 0;
+    }
+    var evt = document.createEvent("HTMLEvents");
+    evt.initEvent("change", false, true);
+    sel.dispatchEvent(evt);
+
+    if (lastBarText) {
+        document.getElementById('symtext').value = lastBarText;
+        document.getElementById('symaltx').value = lastAltText;
+        document.getElementById('symopts').value = lastOptions;
+    }
+    if (lastRenderAs) {
+        document.getElementById(lastRenderAs).checked = true;
+    }
+    if (lastScaleX && lastScaleY) {
+        document.getElementById('scaleX').value = lastScaleX;
+        document.getElementById('scaleY').value = lastScaleY;
+    }
+    if (lastRotate) {
+        document.getElementById('rotate' + lastRotate).checked = true;
+    }
+
+    document.getElementById('scaleX').addEventListener('change', function(ev) {
+            document.getElementById('scaleY').value = ev.target.value;
+        });
+    document.getElementById('render').addEventListener('click', render);
+    document.getElementById('saveas').style.visibility = 'hidden';
+
+    // Allow Enter to render
+    document.getElementById('params').addEventListener('keypress', function(ev) {
+        if (ev.which == 13) {
+            render();
+            ev.stopPropagation();
+            ev.preventDefault();
+            return false;
+        }
+    });
+
+    document.getElementById('versions').textContent =
+                'bwip-js ' + bwipjs.BWIPJS_VERSION + ' / BWIPP ' + bwipjs.BWIPP_VERSION;
+
+    // A reasonable match to OCR-B metrics.
+    bwipjs.loadFont("Inconsolata", 95, 105, Inconsolata);
+});
+
+function render() {
+    var elt  = symdesc[document.getElementById('symbol').value];
+    var text = document.getElementById('symtext').value.trim();
+    var alttext = document.getElementById('symaltx').value.trim();
+    var options = document.getElementById('symopts').value.trim();
+    var rotate = document.querySelector('input[name="rotate"]:checked').value;
+    var scaleX = +document.getElementById('scaleX').value || 2;
+    var scaleY = +document.getElementById('scaleY').value || 2;
+    var renderAs = document.querySelector('input[name="render-as"]:checked').id;
+
+    try {
+        localStorage.setItem('bwipjsLastSymbol',  elt.sym);
+        localStorage.setItem('bwipjsLastBarText', text);
+        localStorage.setItem('bwipjsLastAltText', alttext);
+        localStorage.setItem('bwipjsLastOptions', options);
+        localStorage.setItem('bwipjsLastScaleX', scaleX);
+        localStorage.setItem('bwipjsLastScaleY', scaleY);
+        localStorage.setItem('bwipjsLastRotate', rotate);
+        localStorage.setItem('bwipjsLastRenderAs', renderAs);
+    } catch (e) {
+    }
+
+    // Clear the page
+    document.getElementById('output').value = '';
+    document.getElementById('stats').value = '';
+    document.getElementById('saveas').style.visibility = 'hidden';
+    document.getElementById('output').textContent = '';
+
+    var canvas = document.getElementById('canvas');
+    canvas.height = 1;
+    canvas.width  = 1;
+    canvas.style.display = 'none';
+
+    var svgdiv = document.getElementById('svgdiv');
+    svgdiv.style.display = 'none';
+
+    // Convert the options to an object.
+    let opts = {};
+    let aopts = options.split(' ');
+    for (let i = 0; i < aopts.length; i++) {
+        if (!aopts[i]) {
+            continue;
+        }
+        var eq = aopts[i].indexOf('=');
+        if (eq == -1) {
+            // !name => false
+            // name => true
+            if (aopts[i][0] == '!') {
+                opts[aopts[i].substr(1)] = false;
+            } else {
+                opts[aopts[i]] = true;
+            }
+        } else {
+            opts[aopts[i].substr(0, eq)] = aopts[i].substr(eq+1);
+        }
+    }
+
+    // Finish up the options
+    opts.text = text;
+    opts.bcid = elt.sym;
+    opts.scaleX = scaleX;
+    opts.scaleY = scaleY;
+    opts.rotate = rotate;
+    if (alttext) {
+        opts.alttext = alttext;
+    }
+
+    if (renderAs == 'render-canvas') {
+        // Draw the bar code to the canvas
+        try {
+            let ts0 = new Date;
+            bwipjs.toCanvas(canvas, opts);
+            showCVS(ts0, new Date);
+        } catch (e) {
+            // Watch for BWIPP generated raiseerror's.
+            var msg = (''+e).trim();
+            if (msg.indexOf("bwipp.") >= 0) {
+                document.getElementById('output').textContent = msg;
+            } else if (e.stack) {
+                // GC includes the message in the stack.  FF does not.
+                document.getElementById('output').textContent =
+                        (e.stack.indexOf(msg) == -1 ? msg + '\n' : '') + e.stack;
+            } else {
+                document.getElementById('output').textContent = msg;
+            }
+            return;
+        }
+    } else {
+        // Draw the bar code as SVG
+        try {
+            let ts0 = new Date;
+            let svg = bwipjs.toSVG(opts);
+            showSVG(svg, ts0, new Date);
+        } catch (e) {
+            // Watch for BWIPP generated raiseerror's.
+            var msg = (''+e).trim();
+            if (msg.indexOf("bwipp.") >= 0) {
+                document.getElementById('output').textContent = msg;
+            } else if (e.stack) {
+                // GC includes the message in the stack.  FF does not.
+                document.getElementById('output').textContent =
+                        (e.stack.indexOf(msg) == -1 ? msg + '\n' : '') + e.stack;
+            } else {
+                document.getElementById('output').textContent = msg;
+            }
+            return;
+        }
+    }
+
+    function showCVS(ts0, ts1) {
+        canvas.style.display = '';
+        setURL();
+        document.getElementById('stats').textContent = elt.sym + ' rendered in ' + (ts1-ts0) + ' msecs.';
+        document.getElementById('saveas').style.visibility = 'visible';
+        saveCanvas.basename = elt.sym + '-' + text.replace(/[^a-zA-Z0-9._]+/g, '-');
+        if (window.devicePixelRatio) {
+            canvas.style.zoom = 1 / window.devicePixelRatio;
+        } else {
+            canvas.style.zoom = 1;
+        }
+    }
+    function showSVG(svg, ts0, ts1) {
+        let [ , width, height ] = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
+        svgdiv.style.width = width + 'px';
+        svgdiv.style.height = height + 'px';
+        if (window.devicePixelRatio) {
+            svgdiv.style.zoom = 1 / window.devicePixelRatio;
+        } else {
+            svgdiv.style.zoom = 1;
+        }
+        svgdiv.innerHTML = svg;
+        svgdiv.style.display = '';
+        document.getElementById('output').textContent = svg;
+        document.getElementById('stats').textContent = elt.sym + ' rendered in ' + (ts1-ts0) + ' msecs.';
+    }
+}
+function saveCanvas(type, ext) {
+    var canvas = document.getElementById('canvas');
+    canvas.toBlob(function (blob) {
+                      saveAs(blob, saveCanvas.basename + ext);
+                  }, type, 1);
+}
+function setURL() {
+    var elt  = symdesc[document.getElementById('symbol').value];
+    var text = document.getElementById('symtext').value.trim();
+    var alttext = document.getElementById('symaltx').value.trim();
+    var options = document.getElementById('symopts').value.trim();
+    var rotate = document.querySelector('input[name="rotate"]:checked').value;
+    var scaleX = +document.getElementById('scaleX').value || 2;
+    var scaleY = +document.getElementById('scaleY').value || scaleX;
+
+    var url = 'http://bwipjs-api.metafloor.com/?bcid=' + elt.sym +
+                '&text=' + encodeURIComponent(text) +
+                (alttext ? '&alttext=' + encodeURIComponent(alttext) : '') +
+                (options ? '&' + options.replace(/ +/g, '&') : '') +
+                (rotate != 'N' ? '&rotate=' + rotate : '') +
+                (scaleX == scaleY ? '&scale=' + scaleX
+                                  : '&scaleX=' + scaleX + '&scaleY=' + scaleY)
+                ;
+
+    document.getElementById('apiurl').href = url;
+}
+</script>
+</head><body data-new-gr-c-s-check-loaded="14.1239.0" data-gr-ext-installed="">
+<div id="header">
+    <div id="bwip-js">bwip-js // Barcode Writer in Pure JavaScript</div>
+    <div id="versions">bwip-js 4.6.0 (2025-04-20) / BWIPP 2025-04-19</div>
+</div>
+<div id="params">
+<table border="0" cellpading="0" cellspacing="0"><tbody><tr>
+<td style="vertical-align:top">
+    <table border="0" cellpading="0" cellspacing="0">
+    <tbody><tr><th>Barcode Type:</th><td><select id="symbol"><option value="auspost">AusPost 4 State Customer Code</option><option value="azteccode">Aztec Code</option><option value="aztecrune">Aztec Runes</option><option value="bc412">BC412</option><option value="coop2of5">COOP 2 of 5</option><option value="channelcode">Channel Code</option><option value="rationalizedCodabar">Codabar</option><option value="codablockf">Codablock F</option><option value="code11">Code 11</option><option value="code128">Code 128</option><option value="code16k">Code 16K</option><option value="code2of5">Code 25</option><option value="code39">Code 39</option><option value="code39ext">Code 39 Extended</option><option value="code49">Code 49</option><option value="code93">Code 93</option><option value="code93ext">Code 93 Extended</option><option value="codeone">Code One</option><option value="azteccodecompact">Compact Aztec Code</option><option value="pdf417compact">Compact PDF417</option><option value="raw">Custom 1D symbology</option><option value="daft">Custom 4 state symbology</option><option value="datamatrix">Data Matrix</option><option value="datamatrixrectangular">Data Matrix Rectangular</option><option value="datamatrixrectangularextension">Data Matrix Rectangular Extension</option><option value="datalogic2of5">Datalogic 2 of 5</option><option value="identcode">Deutsche Post Identcode</option><option value="leitcode">Deutsche Post Leitcode</option><option value="dotcode">DotCode</option><option value="ean13">EAN-13</option><option value="ean13composite">EAN-13 Composite</option><option value="ean14">EAN-14</option><option value="ean2">EAN-2 (2 digit addon)</option><option value="ean5">EAN-5 (5 digit addon)</option><option value="ean8">EAN-8</option><option value="ean8composite">EAN-8 Composite</option><option value="flattermarken">Flattermarken</option><option value="gs1-cc">GS1 Composite 2D Component</option><option value="gs1datamatrix">GS1 Data Matrix</option><option value="gs1datamatrixrectangular">GS1 Data Matrix Rectangular</option><option value="databarexpanded">GS1 DataBar Expanded</option><option value="databarexpandedcomposite">GS1 DataBar Expanded Composite</option><option value="databarexpandedstacked">GS1 DataBar Expanded Stacked</option><option value="databarexpandedstackedcomposite">GS1 DataBar Expanded Stacked Composite</option><option value="databarlimited">GS1 DataBar Limited</option><option value="databarlimitedcomposite">GS1 DataBar Limited Composite</option><option value="databaromni">GS1 DataBar Omnidirectional</option><option value="databaromnicomposite">GS1 DataBar Omnidirectional Composite</option><option value="databarstacked">GS1 DataBar Stacked</option><option value="databarstackedcomposite">GS1 DataBar Stacked Composite</option><option value="databarstackedomni">GS1 DataBar Stacked Omnidirectional</option><option value="databarstackedomnicomposite">GS1 DataBar Stacked Omnidirectional Composite</option><option value="databartruncated">GS1 DataBar Truncated</option><option value="databartruncatedcomposite">GS1 DataBar Truncated Composite</option><option value="gs1dldatamatrix">GS1 Digital Link Data Matrix</option><option value="gs1dlqrcode">GS1 Digital Link QR Code</option><option value="gs1dotcode">GS1 DotCode</option><option value="gs1northamericancoupon">GS1 North American Coupon</option><option value="gs1qrcode">GS1 QR Code</option><option value="gs1-128">GS1-128</option><option value="gs1-128composite">GS1-128 Composite</option><option value="hibcazteccode">HIBC Aztec Code</option><option value="hibccodablockf">HIBC Codablock F</option><option value="hibccode128">HIBC Code 128</option><option value="hibccode39">HIBC Code 39</option><option value="hibcdatamatrix">HIBC Data Matrix</option><option value="hibcdatamatrixrectangular">HIBC Data Matrix Rectangular</option><option value="hibcmicropdf417">HIBC MicroPDF417</option><option value="hibcpdf417">HIBC PDF417</option><option value="hibcqrcode">HIBC QR Code</option><option value="hanxin">Han Xin Code</option><option value="iata2of5">IATA 2 of 5</option><option value="isbn">ISBN</option><option value="ismn">ISMN</option><option value="issn">ISSN</option><option value="itf14">ITF-14</option><option value="industrial2of5">Industrial 2 of 5</option><option value="interleaved2of5">Interleaved 2 of 5 (ITF)</option><option value="code32">Italian Pharmacode</option><option value="japanpost">Japan Post 4 State Customer Code</option><option value="msi">MSI Modified Plessey</option><option value="mands">Marks &amp; Spencer</option><option value="matrix2of5">Matrix 2 of 5</option><option value="maxicode">MaxiCode</option><option value="microqrcode">Micro QR Code</option><option value="micropdf417">MicroPDF417</option><option value="symbol">Miscellaneous symbols</option><option value="pdf417">PDF417</option><option value="pharmacode">Pharmaceutical Binary Code</option><option value="pzn">Pharmazentralnummer (PZN)</option><option value="plessey">Plessey UK</option><option value="posicode">PosiCode</option><option value="qrcode">QR Code</option><option value="rectangularmicroqrcode">Rectangular Micro QR Code</option><option value="kix">Royal Dutch TPG Post KIX</option><option value="royalmail">Royal Mail 4 State Customer Code</option><option value="mailmark">Royal Mail Mailmark</option><option value="sscc18">SSCC-18</option><option value="swissqrcode">Swiss QR Code</option><option value="telepen">Telepen</option><option value="telepennumeric">Telepen Numeric</option><option value="pharmacode2">Two-track Pharmacode</option><option value="upca">UPC-A</option><option value="upcacomposite">UPC-A Composite</option><option value="upce">UPC-E</option><option value="upcecomposite">UPC-E Composite</option><option value="onecode">USPS Intelligent Mail</option><option value="planet">USPS PLANET</option><option value="postnet">USPS POSTNET</option><option value="ultracode">Ultracode</option></select>
+    </td></tr><tr><th>Bar Text:</th><td><input id="symtext" type="text" spellcheck="false">
+    </td></tr><tr><th>Alt Text:</th><td><input id="symaltx" type="text" spellcheck="false">
+    </td></tr><tr><th>Options:</th><td><input id="symopts" type="text" spellcheck="false">
+    </td></tr><tr><td></td><td>
+        <div id="stats"></div>
+        <div id="saveas" style="visibility: hidden;">
+        <a class="saveas" href="javascript:saveCanvas(&#39;image/png&#39;,&#39;.png&#39;)">Save As PNG</a>
+        &nbsp;&nbsp;
+        <a class="saveas" href="javascript:saveCanvas(&#39;image/jpeg&#39;,&#39;.jpg&#39;)">Save As JPEG</a>
+        &nbsp;&nbsp;
+        <a class="saveas" id="apiurl" href="https://bwip-js.metafloor.com/demo/demo.html">Goto URL</a>
+        &nbsp;&nbsp;
+        </div>
+    </td></tr></tbody></table>
+</td><td style="padding-left:10mm;vertical-align:top">
+    <table border="0" cellpading="0" cellspacing="5">
+    <tbody><tr><th>Render As:</th><td>
+        <label for="render-canvas"><input type="radio" name="render-as" id="render-canvas" checked="">Canvas</label>
+        <label for="render-svg"><input type="radio" name="render-as" id="render-svg">SVG</label>
+    </td></tr><tr><th>Scale X,Y:</th><td>
+        <input type="number" min="1" max="9" step="1" id="scaleX" value="2">
+        <input type="number" min="1" max="9" step="1" id="scaleY" value="2">
+    </td></tr><tr><th>Image Rotation:</th><td>
+        <label for="rotateN"><input type="radio" name="rotate" value="N" id="rotateN" checked="">Normal</label>
+        <label for="rotateR"><input type="radio" name="rotate" value="R" id="rotateR">Right</label>
+        <label for="rotateL"><input type="radio" name="rotate" value="L" id="rotateL">Left</label>
+        <label for="rotateI"><input type="radio" name="rotate" value="I" id="rotateI">Invert</label>
+    </td></tr><tr><td></td><td><button style="margin-top:1ex" id="render">Show Barcode</button>
+    </td></tr></tbody></table>
+</td></tr><tr><td><br>
+</td></tr></tbody></table>
+</div>
+<div id="content">
+<canvas id="canvas" width="1" height="1" style="display:none"></canvas>
+<div id="svgdiv" style="display:none"></div>
+<div id="output" style="white-space:pre"></div>
+</div>
+
+
+<script src="chrome-extension://ldinpeekobnhjjdofggfgjlcehhmanlj/inpage.js" id="leather-provider"></script></body><grammarly-desktop-integration data-grammarly-shadow-root="true"><template shadowrootmode="open"><style>
+      div.grammarly-desktop-integration {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+        -moz-user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select:none;
+        user-select:none;
+      }
+
+      div.grammarly-desktop-integration:before {
+        content: attr(data-content);
+      }
+    </style><div aria-label="grammarly-integration" role="group" tabindex="-1" class="grammarly-desktop-integration" data-content="{&quot;mode&quot;:&quot;limited&quot;,&quot;isActive&quot;:false,&quot;isUserDisabled&quot;:false}"></div></template></grammarly-desktop-integration></html>
