@@ -297,7 +297,13 @@ export default function BarcodeGenerator() {
     }
 
     if (!isScriptsLoaded) {
-        return <p>Cargando scripts...</p>; // Mostrar algo mientras se cargan los scripts
+        return (
+            <div className="flex items-center justify-center h-screen bg-background">
+                <div className="flex flex-col items-center space-y-4">
+                    <p className="text-lg font-medium text-foreground">Loading scripts...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
