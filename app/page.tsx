@@ -505,7 +505,7 @@ export default function BarcodeGenerator() {
                                             </ul>
                                         </>
                                     ) : (
-                                        <p className="text-gray-500 italic">No hay opciones disponibles</p>
+                                        <p className="text-gray-500 italic">No available options</p>
                                     )}
 
                                 </div>
