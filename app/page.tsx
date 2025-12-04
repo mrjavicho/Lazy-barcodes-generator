@@ -71,7 +71,8 @@ export default function BarcodeGenerator() {
         document.head.appendChild(bwipLibscript)
         // Load symdesc
         const descScript = document.createElement("script")
-        descScript.src = "scripts/desc.js"
+        const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+        descScript.src = `${basePath}/scripts/desc.js`
         descScript.onload = () => setIsScriptsLoaded(true);
         document.head.appendChild(descScript)
 
