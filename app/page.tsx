@@ -1,13 +1,14 @@
 "use client"
 
 import {useState, useEffect} from "react"
+import { useTheme } from "next-themes"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {Button} from "@/components/ui/button"
 import {Textarea} from "@/components/ui/textarea"
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select"
 import {Switch} from "@/components/ui/switch"
 import {Label} from "@/components/ui/label"
-import {Download, Zap, BarChart3, Info, Code, Settings, FileCode} from "lucide-react"
+import {Download, Zap, BarChart3, Info, Code, Settings, FileCode, Sun, Moon, Monitor} from "lucide-react"
 import {JetBrains_Mono, Bungee_Tint} from "next/font/google"
 
 const jetbrainsMono = JetBrains_Mono({
@@ -55,7 +56,6 @@ export default function BarcodeGenerator() {
     const [barcodeText, setBarcodeText] = useState("AAA1234;BBB1234")
     const [symbology, setSymbology] = useState("")
     const [initialSymbology, setInitialSymbology] = useState("");
-    const [darkMode, setDarkMode] = useState(false)
     const [barcodes, setBarcodes] = useState<string[]>([])
     const [isGenerating, setIsGenerating] = useState(false)
     const [options, setOptions] = useState<Record<string, string>>({});
@@ -73,6 +73,21 @@ export default function BarcodeGenerator() {
 
     // Trim controls
     const [trimEntries, setTrimEntries] = useState<boolean>(true);
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    type ThemeMode = 'light' | 'dark' | 'system';
+    const getCurrentThemeSetting = (): ThemeMode => (mounted ? ((theme ?? 'system') as ThemeMode) : 'system');
+    const cycleTheme = () => {
+        const order: ThemeMode[] = ['system', 'light', 'dark'];
+        const curr = getCurrentThemeSetting();
+        const next = order[(order.indexOf(curr) + 1) % order.length];
+        setTheme(next);
+    };
 
 
     useEffect(() => {
@@ -101,15 +116,13 @@ export default function BarcodeGenerator() {
         if (!isScriptsLoaded) {
             return
         }
-        // Load saved preferences
-        const savedDarkMode = localStorage.getItem("darkModeEnabled") === "true"
+        // Load saved preferences (theme is managed by next-themes set to follow system by default)
         const savedSymbology = localStorage.getItem("lastSymbology")
         const savedRequest = localStorage.getItem("lastRequest")
         const savedSeparatorMode = (localStorage.getItem("separatorMode") as SeparatorMode) || "auto";
         const savedCustomSeparator = localStorage.getItem("customSeparator") || "";
         const savedTrimEntries = localStorage.getItem("trimEntries");
 
-        if (savedDarkMode) setDarkMode(true)
         if (savedSymbology) {
             console.log("savedSymbology: ", savedSymbology);
             setInitialSymbology(savedSymbology)
@@ -131,14 +144,7 @@ export default function BarcodeGenerator() {
         if (symbology === initialSymbology) return;
     }, [symbology])
 
-    useEffect(() => {
-        localStorage.setItem("darkModeEnabled", darkMode.toString())
-        if (darkMode) {
-            document.documentElement.classList.add("dark")
-        } else {
-            document.documentElement.classList.remove("dark")
-        }
-    }, [darkMode])
+    // Theme is managed by next-themes via ThemeProvider; no manual class or localStorage handling here.
 
     // Close preview on Escape key
     useEffect(() => {
@@ -399,13 +405,36 @@ export default function BarcodeGenerator() {
                         </p>
                     </div>
 
-                    {/* Dark Mode Toggle */}
+                    {/* Theme Button: cycles through system → light → dark */}
                     <div className="flex justify-end mb-6">
                         <div className="flex items-center space-x-2">
-                            <Label htmlFor="dark-mode" className="text-sm font-medium">
-                                Dark mode
+                            <Label htmlFor="theme-button" className="text-sm font-medium">
+                                Theme
                             </Label>
-                            <Switch id="dark-mode" checked={darkMode} onCheckedChange={setDarkMode}/>
+                            <Button
+                                id="theme-button"
+                                variant="outline"
+                                size="sm"
+                                onClick={cycleTheme}
+                                aria-label={`Theme: ${getCurrentThemeSetting()}`}
+                                title={`Theme: ${getCurrentThemeSetting()}`}
+                                className="min-w-[120px]"
+                            >
+                                {getCurrentThemeSetting() === 'light' ? (
+                                    <Sun className="h-4 w-4" />
+                                ) : getCurrentThemeSetting() === 'dark' ? (
+                                    <Moon className="h-4 w-4" />
+                                ) : (
+                                    <Monitor className="h-4 w-4" />
+                                )}
+                                <span className="ml-2">
+                                    {getCurrentThemeSetting() === 'light'
+                                        ? 'Light'
+                                        : getCurrentThemeSetting() === 'dark'
+                                            ? 'Dark'
+                                            : 'System'}
+                                </span>
+                            </Button>
                         </div>
                     </div>
 
