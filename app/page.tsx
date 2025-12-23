@@ -591,7 +591,7 @@ export default function BarcodeGenerator() {
                                                                     type="text"
                                                                     defaultValue={value}
                                                                     onChange={(e) => handleInputChange(key, e.target.value)}
-                                                                    className="w-16 border border-gray-300 rounded-lg p-1 text-sm"
+                                                                    className="w-16 border border-border rounded-lg p-1 text-sm bg-background/50 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                                                                 />
                                                             </div>
                                                         );
