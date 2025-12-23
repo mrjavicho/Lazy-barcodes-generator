@@ -63,6 +63,17 @@ export default function BarcodeGenerator() {
     const [error, setError] = useState<string | null>(null); // State to store error messages
     const [isScriptsLoaded, setIsScriptsLoaded] = useState(false);
 
+    // Separator controls
+    type SeparatorMode = "auto" | "newline" | "comma" | "semicolon" | "space" | "none" | "custom";
+    const [separatorMode, setSeparatorMode] = useState<SeparatorMode>("auto");
+    const [customSeparator, setCustomSeparator] = useState<string>("");
+
+    // Preview (click-to-zoom)
+    const [previewSrc, setPreviewSrc] = useState<string | null>(null);
+
+    // Trim controls
+    const [trimEntries, setTrimEntries] = useState<boolean>(true);
+
 
     useEffect(() => {
         // Load bwip-js library
@@ -94,6 +105,9 @@ export default function BarcodeGenerator() {
         const savedDarkMode = localStorage.getItem("darkModeEnabled") === "true"
         const savedSymbology = localStorage.getItem("lastSymbology")
         const savedRequest = localStorage.getItem("lastRequest")
+        const savedSeparatorMode = (localStorage.getItem("separatorMode") as SeparatorMode) || "auto";
+        const savedCustomSeparator = localStorage.getItem("customSeparator") || "";
+        const savedTrimEntries = localStorage.getItem("trimEntries");
 
         if (savedDarkMode) setDarkMode(true)
         if (savedSymbology) {
@@ -105,6 +119,9 @@ export default function BarcodeGenerator() {
             setSymbology("code128")
         }
         if (savedRequest) setBarcodeText(savedRequest)
+        setSeparatorMode(savedSeparatorMode)
+        setCustomSeparator(savedCustomSeparator)
+        if (savedTrimEntries !== null) setTrimEntries(savedTrimEntries === "true");
     }, [isScriptsLoaded]);
 
     useEffect(() => {
@@ -122,6 +139,21 @@ export default function BarcodeGenerator() {
             document.documentElement.classList.remove("dark")
         }
     }, [darkMode])
+
+    // Close preview on Escape key
+    useEffect(() => {
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setPreviewSrc(null);
+            }
+        };
+        if (previewSrc) {
+            window.addEventListener('keydown', onKeyDown);
+        }
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [previewSrc]);
 
     function loadOptionsRecords(symbOptions: string): Record<string, string> {
         let records: Record<string, string> = {};
@@ -197,18 +229,53 @@ export default function BarcodeGenerator() {
         localStorage.setItem("lastSymbology", symbology);
         localStorage.setItem(storedOptionsKey(symbology), JSON.stringify(selectedOptions));
         console.log(`storing ${storedOptionsKey(symbology)}`, selectedOptions);
+        localStorage.setItem("separatorMode", separatorMode);
+        localStorage.setItem("customSeparator", customSeparator);
+        localStorage.setItem("trimEntries", trimEntries.toString());
 
         try {
-            // Determine separator
-            let separator = ";"
-            if (barcodeText.includes("\n")) separator = "\n"
-            else if (barcodeText.includes(",")) separator = ","
-            else if (barcodeText.includes(" ")) separator = " "
+            // Compute entries according to separator mode
+            const resolveSeparator = (): string | null => {
+                switch (separatorMode) {
+                    case "none":
+                        return null;
+                    case "custom":
+                        return customSeparator || null;
+                    case "newline":
+                        return "\n";
+                    case "comma":
+                        return ",";
+                    case "semicolon":
+                        return ";";
+                    case "space":
+                        return " ";
+                    case "auto":
+                    default: {
+                        let sep = ";";
+                        if (barcodeText.includes("\n")) sep = "\n";
+                        else if (barcodeText.includes(",")) sep = ",";
+                        else if (barcodeText.includes(" ")) sep = " ";
+                        return sep;
+                    }
+                }
+            }
 
-            const entries = barcodeText
-                .split(separator)
-                .map((entry) => entry.trim())
-                .filter((entry) => entry)
+            let entries: string[];
+            const sep = resolveSeparator();
+            if (sep === null) {
+                // No split
+                if (trimEntries) {
+                    entries = [barcodeText.trim()].filter(Boolean);
+                } else {
+                    // keep as-is, but avoid whitespace-only
+                    entries = [barcodeText].filter((e) => e.trim().length > 0);
+                }
+            } else {
+                entries = barcodeText
+                    .split(sep)
+                    .map((entry) => (trimEntries ? entry.trim() : entry))
+                    .filter((entry) => (trimEntries ? Boolean(entry) : entry.trim().length > 0));
+            }
             const generatedBarcodes: string[] = []
 
             // Wait for bwip-js to load
@@ -355,7 +422,7 @@ export default function BarcodeGenerator() {
                             <CardContent className="space-y-3 text-sm text-muted-foreground pt-4">
                                 <p className="flex items-start gap-2">
                                     <span className="text-primary-600 dark:text-primary-500">•</span>
-                                    <span>Use semicolons (;), commas (,), spaces, or line breaks to separate barcode values</span>
+                                    <span>Separate values with semicolons (;), commas (,), spaces, or line breaks — or choose your separator in Settings</span>
                                 </p>
                                 <p className="flex items-start gap-2">
                                     <span className="text-primary-600 dark:text-primary-500">•</span>
@@ -388,7 +455,7 @@ export default function BarcodeGenerator() {
                                     </Label>
                                     <Textarea
                                         id="barcode-input"
-                                        placeholder="Enter barcode values separated by semicolons, commas, or line breaks..."
+                                        placeholder="Enter values. You can pick the separator (Auto, None, or Custom) in Settings."
                                         value={barcodeText}
                                         onChange={(e) => setBarcodeText(e.target.value)}
                                         className="min-h-[120px] font-mono text-sm resize-none bg-background/50 border-border text-foreground"
@@ -458,8 +525,6 @@ export default function BarcodeGenerator() {
                                 </div>
 
                                 <div>
-
-
                                     {Object.entries(options).length > 0 ? (
                                         <>
                                             <Label htmlFor="symbology"
@@ -510,6 +575,65 @@ export default function BarcodeGenerator() {
                                     )}
 
                                 </div>
+
+                                {/* Separator settings */}
+                                <div>
+                                    <Label htmlFor="separator-mode" className="text-sm font-bold mb-2 block text-foreground">
+                                        Separator
+                                    </Label>
+                                    <div className="space-y-2">
+                                        <Select value={separatorMode} onValueChange={(v) => setSeparatorMode(v as any)}>
+                                            <SelectTrigger id="separator-mode" className="bg-background/50 border-border text-foreground">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="auto">Auto-detect</SelectItem>
+                                                <SelectItem value="none">None (don’t split)</SelectItem>
+                                                <SelectItem value="newline">Newline</SelectItem>
+                                                <SelectItem value="comma">Comma ,</SelectItem>
+                                                <SelectItem value="semicolon">Semicolon ;</SelectItem>
+                                                <SelectItem value="space">Space</SelectItem>
+                                                <SelectItem value="custom">Custom…</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {separatorMode === 'custom' && (
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor="custom-separator" className="text-sm text-foreground">Custom</Label>
+                                                <input
+                                                    id="custom-separator"
+                                                    type="text"
+                                                    value={customSeparator}
+                                                    onChange={(e) => setCustomSeparator(e.target.value)}
+                                                    placeholder="e.g. | or :::"
+                                                    className="w-28 border border-gray-300 rounded-lg p-1 text-sm bg-background/50 text-foreground"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Trim settings */}
+                                <div>
+                                    <Label htmlFor="trim-entries" className="text-sm font-bold mb-2 block text-foreground">
+                                        Trim
+                                    </Label>
+                                    <div className="flex items-center space-x-2">
+                                        <Switch
+                                            id="trim-entries"
+                                            checked={trimEntries}
+                                            onCheckedChange={(v) => {
+                                                setTrimEntries(v);
+                                                try { localStorage.setItem("trimEntries", v.toString()); } catch {}
+                                            }}
+                                        />
+                                        <Label htmlFor="trim-entries" className="text-sm font-medium text-foreground">
+                                            Trim each block
+                                        </Label>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        When enabled, leading/trailing spaces are removed from each value.
+                                    </p>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>
@@ -533,18 +657,53 @@ export default function BarcodeGenerator() {
                             <CardContent className="pt-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                                     {barcodes.map((barcode, index) => (
-                                        <div key={index}
-                                             className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => setPreviewSrc(barcode)}
+                                            className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-zoom-in"
+                                            aria-label={`Show barcode ${index + 1} larger`}
+                                        >
                                             <img
                                                 src={barcode || "/placeholder.svg"}
                                                 alt={`Barcode ${index + 1}`}
                                                 className="w-full h-auto max-h-32 object-contain"
                                             />
-                                        </div>
+                                        </button>
                                     ))}
                                 </div>
                             </CardContent>
                         </Card>
+                    )}
+
+                    {/* Preview Modal */}
+                    {previewSrc && (
+                        <div
+                            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                            onClick={() => setPreviewSrc(null)}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-label="Barcode preview"
+                        >
+                            <div
+                                className="relative max-w-[95vw] max-h-[95vh]"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewSrc(null)}
+                                    className="absolute -top-3 -right-3 bg-white text-gray-700 rounded-full shadow p-2 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    aria-label="Close preview"
+                                >
+                                    ✕
+                                </button>
+                                <img
+                                    src={previewSrc}
+                                    alt="Barcode large preview"
+                                    className="block max-w-[95vw] max-h-[85vh] object-contain rounded-md bg-white p-4"
+                                />
+                            </div>
+                        </div>
                     )}
 
                     {/* Footer */}
